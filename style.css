@@ -953,3 +953,66 @@ select option {
   color: var(--gold-dim);
   border: 1px solid rgba(201,168,76,0.25);
 }
+
+/* ═══════════════════════════════════════════
+   ADMIN MODE
+═══════════════════════════════════════════ */
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.header-titles { flex: 1; }
+
+.header-admin-area {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.admin-badge {
+  background: rgba(201,168,76,0.15);
+  border: 1px solid var(--gold-dim);
+  border-radius: 999px;
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.admin-badge.hidden { display: none; }
+
+.btn-lock {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.4rem 0.6rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-lock:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.admin-error {
+  background: rgba(192,57,43,0.12);
+  border: 1px solid var(--red);
+  border-radius: var(--radius);
+  color: #e07060;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.admin-error.hidden { display: none; }

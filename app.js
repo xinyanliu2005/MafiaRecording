@@ -2,6 +2,12 @@
 //  MAFIA STATS TRACKER — app.js
 // ═══════════════════════════════════════════
 
+// ─── Admin password — change this to whatever you want ───
+const ADMIN_PASSWORD = 'mafia2024';
+
+// ─── Admin session (lives in sessionStorage — clears when tab closes) ───
+let isAdmin = sessionStorage.getItem('mafiaAdmin') === 'yes';
+
 // ─── Scoring ─────────────────────────────────
 const SCORE = { WIN: 10, LOSS: 6, WATCH: 4 };
 
@@ -9,8 +15,8 @@ const SCORE = { WIN: 10, LOSS: 6, WATCH: 4 };
 // Each mode defines sides[], each side has a label, color, and roles[]
 // roles[] entries: { role: string, count: number }
 const GAME_MODES = {
-  TombKeeper: {
-    label: 'TombKeeper',
+  ShouMuRen: {
+    label: 'ShouMuRen',
     sides: [
       {
         id: 'wolf', label: '🐺 Wolf Side', color: 'side-wolf',
@@ -23,7 +29,7 @@ const GAME_MODES = {
         id: 'village', label: '🏘 Village Side', color: 'side-village',
         roles: [
           { role: 'ProphetTeller', count: 1 },
-          { role: 'TombKeeper',    count: 1 },
+          { role: 'ShouMuRen',     count: 1 },
           { role: 'Hunter',        count: 1 },
           { role: 'Witch',         count: 1 },
           { role: 'Peasant',       count: 4 },
@@ -805,7 +811,7 @@ function renderHistory() {
             <thead><tr><th>Player</th><th>Role</th><th>Side</th><th>Outcome</th><th>Pts</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
-          <div class="history-actions">
+          <div class="history-actions admin-action" style="display:${isAdmin?'':'none'}">
             <button class="btn btn-danger" onclick="deleteGame('${game.id}')">Delete Game</button>
           </div>
         </div>
@@ -834,10 +840,84 @@ async function deleteGame(gameId) {
 }
 
 // ═══════════════════════════════════════════
+//  ADMIN MODE
+// ═══════════════════════════════════════════
+
+function applyAdminState() {
+  const badge   = document.getElementById('admin-badge');
+  const lockBtn = document.getElementById('admin-lock-btn');
+
+  if (isAdmin) {
+    // Show admin tabs
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    // Show admin-only buttons inside pages
+    document.querySelectorAll('.admin-action').forEach(el => el.style.display = '');
+    badge.classList.remove('hidden');
+    lockBtn.textContent = '🔓';
+    lockBtn.title = 'Lock admin mode';
+  } else {
+    // Hide admin tabs
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    // Hide admin-only buttons inside pages
+    document.querySelectorAll('.admin-action').forEach(el => el.style.display = 'none');
+    badge.classList.add('hidden');
+    lockBtn.textContent = '🔒';
+    lockBtn.title = 'Admin login';
+    // If currently on an admin-only tab, redirect to leaderboard
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab && activeTab.classList.contains('admin-only')) {
+      document.querySelector('[data-tab="leaderboard"]').click();
+    }
+  }
+}
+
+// Lock button — toggle login/logout
+document.getElementById('admin-lock-btn').addEventListener('click', () => {
+  if (isAdmin) {
+    // Already admin — clicking locks
+    isAdmin = false;
+    sessionStorage.removeItem('mafiaAdmin');
+    applyAdminState();
+    toast('Admin mode locked.');
+  } else {
+    // Not admin — open login modal
+    document.getElementById('admin-password-input').value = '';
+    document.getElementById('admin-error').classList.add('hidden');
+    document.getElementById('admin-modal-title').textContent = 'Admin Login';
+    document.getElementById('admin-modal-overlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('admin-password-input').focus(), 50);
+  }
+});
+
+document.getElementById('admin-login-btn').addEventListener('click', () => {
+  const entered = document.getElementById('admin-password-input').value;
+  if (entered === ADMIN_PASSWORD) {
+    isAdmin = true;
+    sessionStorage.setItem('mafiaAdmin', 'yes');
+    document.getElementById('admin-modal-overlay').classList.add('hidden');
+    applyAdminState();
+    toast('Admin mode unlocked. Welcome back, Don.');
+  } else {
+    document.getElementById('admin-error').classList.remove('hidden');
+    document.getElementById('admin-password-input').value = '';
+    document.getElementById('admin-password-input').focus();
+  }
+});
+
+document.getElementById('admin-modal-cancel').addEventListener('click', () => {
+  document.getElementById('admin-modal-overlay').classList.add('hidden');
+});
+
+document.getElementById('admin-password-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('admin-login-btn').click();
+});
+
+// ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
 (async () => {
   await loadState();
+  applyAdminState();
   renderLeaderboard();
   renderPlayersList();
   renderHistory();

@@ -11,17 +11,21 @@
   <header>
     <div class="header-inner">
       <div class="header-icon">🔫</div>
-      <div>
+      <div class="header-titles">
         <h1>THE FAMILY RECORDS</h1>
         <p class="tagline">Mafia Game Statistics Tracker</p>
+      </div>
+      <div class="header-admin-area">
+        <span id="admin-badge" class="admin-badge hidden">⚙️ Admin</span>
+        <button id="admin-lock-btn" class="btn-lock" title="Admin login">🔒</button>
       </div>
     </div>
   </header>
 
   <nav class="tab-nav">
     <button class="tab-btn active" data-tab="leaderboard">📋 Leaderboard</button>
-    <button class="tab-btn" data-tab="log-game">🎲 Log a Game</button>
-    <button class="tab-btn" data-tab="players">👤 Players</button>
+    <button class="tab-btn admin-only" data-tab="log-game" style="display:none">🎲 Log a Game</button>
+    <button class="tab-btn admin-only" data-tab="players" style="display:none">👤 Players</button>
     <button class="tab-btn" data-tab="history">📜 Game History</button>
   </nav>
 
@@ -189,6 +193,20 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="quickadd-confirm">Add &amp; Select</button>
         <button class="btn btn-secondary" id="quickadd-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIN MODAL -->
+  <div id="admin-modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="admin-modal-title">Admin Login</h3>
+      <p id="admin-modal-desc">Enter the admin password to unlock editing features.</p>
+      <input type="password" id="admin-password-input" placeholder="Password..." style="margin-bottom:1rem" />
+      <div id="admin-error" class="admin-error hidden">Incorrect password. Try again.</div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="admin-login-btn">Unlock</button>
+        <button class="btn btn-secondary" id="admin-modal-cancel">Cancel</button>
       </div>
     </div>
   </div>
