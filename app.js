@@ -9,14 +9,14 @@ const ADMIN_PASSWORD = 'mafia2024';
 let isAdmin = sessionStorage.getItem('mafiaAdmin') === 'yes';
 
 // ─── Scoring ─────────────────────────────────
-const SCORE = { WIN: 10, LOSS: 6, WATCH: 4 };
+const SCORE = { WIN: 25, LOSS: 17, WATCH: 15 };
 
 // ─── Game Mode Definitions ───────────────────
 // Each mode defines sides[], each side has a label, color, and roles[]
 // roles[] entries: { role: string, count: number }
 const GAME_MODES = {
-  ShouMuRen: {
-    label: 'ShouMuRen',
+  TombKeeper: {
+    label: 'TombKeeper',
     sides: [
       {
         id: 'wolf', label: '🐺 Wolf Side', color: 'side-wolf',
@@ -29,7 +29,7 @@ const GAME_MODES = {
         id: 'village', label: '🏘 Village Side', color: 'side-village',
         roles: [
           { role: 'ProphetTeller', count: 1 },
-          { role: 'ShouMuRen',     count: 1 },
+          { role: 'TombKeeper',    count: 1 },
           { role: 'Hunter',        count: 1 },
           { role: 'Witch',         count: 1 },
           { role: 'Peasant',       count: 4 },
