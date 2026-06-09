@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mafia Stats Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="header-icon">🔫</div>
+      <div>
+        <h1>THE FAMILY RECORDS</h1>
+        <p class="tagline">Mafia Game Statistics Tracker</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="leaderboard">📋 Leaderboard</button>
+    <button class="tab-btn" data-tab="log-game">🎲 Log a Game</button>
+    <button class="tab-btn" data-tab="players">👤 Players</button>
+    <button class="tab-btn" data-tab="history">📜 Game History</button>
+  </nav>
+
+  <main>
+
+    <!-- LEADERBOARD -->
+    <section id="tab-leaderboard" class="tab-content active">
+      <div class="section-header">
+        <h2>LEADERBOARD</h2>
+        <span class="subtitle">Sorted by total score</span>
+      </div>
+      <div id="leaderboard-container">
+        <p class="empty-state">No players yet. Add players in the Players tab.</p>
+      </div>
+    </section>
+
+    <!-- LOG GAME -->
+    <section id="tab-log-game" class="tab-content">
+      <div class="section-header">
+        <h2>LOG A GAME</h2>
+        <span class="subtitle">Record results for all participants</span>
+      </div>
+
+      <!-- Step 1: Pick mode -->
+      <div id="log-step-mode">
+        <div class="card">
+          <div class="form-row" style="margin-bottom:1.25rem">
+            <div class="form-group">
+              <label for="game-date">Date</label>
+              <input type="date" id="game-date" />
+            </div>
+            <div class="form-group">
+              <label for="game-notes">Session Notes (optional)</label>
+              <input type="text" id="game-notes" placeholder="e.g. Friday night game #3" />
+            </div>
+          </div>
+
+          <hr class="divider" />
+
+          <p class="step-label">STEP 1 — Select a game mode</p>
+          <div class="mode-grid">
+            <button class="mode-card" data-mode="ShouMuRen">
+              <span class="mode-icon">🐺</span>
+              <span class="mode-name">ShouMuRen</span>
+              <span class="mode-desc">12 players · Special guardian role</span>
+            </button>
+            <button class="mode-card" data-mode="Normal12">
+              <span class="mode-icon">⚖️</span>
+              <span class="mode-name">Normal · 12P</span>
+              <span class="mode-desc">12 players · Classic setup</span>
+            </button>
+            <button class="mode-card" data-mode="Normal9">
+              <span class="mode-icon">⚖️</span>
+              <span class="mode-name">Normal · 9P</span>
+              <span class="mode-desc">9 players · Smaller game</span>
+            </button>
+            <button class="mode-card" data-mode="WhiteWolf">
+              <span class="mode-icon">🤍</span>
+              <span class="mode-name">White Wolf</span>
+              <span class="mode-desc">8 players · Wolf among wolves</span>
+            </button>
+            <button class="mode-card" data-mode="Jupiter">
+              <span class="mode-icon">⚡</span>
+              <span class="mode-name">Jupiter</span>
+              <span class="mode-desc">12 players · Alien faction</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Assign players to roles -->
+      <div id="log-step-assign" style="display:none">
+        <div class="card">
+          <div class="step-back-row">
+            <button class="btn btn-secondary" id="back-to-mode-btn">← Change Mode</button>
+            <div class="mode-tag-display">
+              <span class="mode-tag" id="active-mode-label"></span>
+            </div>
+          </div>
+
+          <hr class="divider" />
+          <p class="step-label">STEP 2 — Assign players to each role</p>
+
+          <div id="sides-container">
+            <!-- Sides & role rows injected here -->
+          </div>
+
+          <hr class="divider" />
+          <p class="step-label">STEP 3 — Who won?</p>
+
+          <div id="winner-side-container" class="winner-side-grid">
+            <!-- Winner buttons injected here -->
+          </div>
+
+          <hr class="divider" />
+
+          <!-- Watchers section -->
+          <div class="participants-header">
+            <h3>Watchers (optional)</h3>
+            <button class="btn btn-secondary" id="add-watcher-btn">+ Add Watcher</button>
+          </div>
+          <div id="watcher-list"></div>
+
+          <hr class="divider" />
+          <div class="form-actions">
+            <button class="btn btn-primary" id="save-game-btn">Save Game</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLAYERS -->
+    <section id="tab-players" class="tab-content">
+      <div class="section-header">
+        <h2>PLAYERS</h2>
+        <span class="subtitle">Manage your group</span>
+      </div>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group flex-grow">
+            <label for="new-player-name">New Player Name</label>
+            <input type="text" id="new-player-name" placeholder="Enter name..." />
+          </div>
+          <div class="form-group align-end">
+            <button class="btn btn-primary" id="add-player-btn">Add Player</button>
+          </div>
+        </div>
+      </div>
+      <div id="players-list-container">
+        <p class="empty-state">No players added yet.</p>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="tab-history" class="tab-content">
+      <div class="section-header">
+        <h2>GAME HISTORY</h2>
+        <span class="subtitle">All recorded sessions</span>
+      </div>
+      <div id="history-container">
+        <p class="empty-state">No games logged yet.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- CONFIRM MODAL -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <p id="modal-message"></p>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="modal-confirm">Confirm</button>
+        <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW PLAYER QUICK-ADD MODAL -->
+  <div id="quickadd-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Add New Player</h3>
+      <p>This person isn't in the system yet. Enter their name to add them.</p>
+      <input type="text" id="quickadd-name" placeholder="Player name..." style="margin-bottom:1rem" />
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="quickadd-confirm">Add &amp; Select</button>
+        <button class="btn btn-secondary" id="quickadd-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="supabase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
