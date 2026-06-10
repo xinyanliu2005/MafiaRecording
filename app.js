@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════
 
 // ─── Admin password — change this to whatever you want ───
-const ADMIN_PASSWORD = 'mafia2024';
+const ADMIN_PASSWORD = 'hcx';
 
 // ─── Admin session (lives in sessionStorage — clears when tab closes) ───
 let isAdmin = sessionStorage.getItem('mafiaAdmin') === 'yes';
