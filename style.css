@@ -1016,3 +1016,27 @@ select option {
 }
 
 .admin-error.hidden { display: none; }
+
+/* ═══════════════════════════════════════════
+   LANGUAGE TOGGLE BUTTON
+═══════════════════════════════════════════ */
+.btn-lang {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 0.35rem 0.65rem;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.btn-lang:hover {
+  background: var(--border);
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}

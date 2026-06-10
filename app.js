@@ -28,8 +28,8 @@ const GAME_MODES = {
       {
         id: 'village', label: '🏘 Village Side', color: 'side-village',
         roles: [
-          { role: 'ProphetTeller', count: 1 },
-          { role: 'TombKeeper',    count: 1 },
+          { role: 'Prophet', count: 1 },
+          { role: 'TombKeeper',     count: 1 },
           { role: 'Hunter',        count: 1 },
           { role: 'Witch',         count: 1 },
           { role: 'Peasant',       count: 4 },
@@ -50,7 +50,7 @@ const GAME_MODES = {
       {
         id: 'village', label: '🏘 Village Side', color: 'side-village',
         roles: [
-          { role: 'ProphetTeller', count: 1 },
+          { role: 'Prophet', count: 1 },
           { role: 'Witch',         count: 1 },
           { role: 'Hunter',        count: 1 },
           { role: 'Guard',         count: 1 },
@@ -72,7 +72,7 @@ const GAME_MODES = {
       {
         id: 'village', label: '🏘 Village Side', color: 'side-village',
         roles: [
-          { role: 'ProphetTeller', count: 1 },
+          { role: 'Prophet', count: 1 },
           { role: 'Witch',         count: 1 },
           { role: 'Hunter',        count: 1 },
           { role: 'Peasant',       count: 3 },
@@ -99,7 +99,7 @@ const GAME_MODES = {
       {
         id: 'village', label: '🏘 Village Side', color: 'side-village',
         roles: [
-          { role: 'ProphetTeller', count: 1 },
+          { role: 'Prophet', count: 1 },
           { role: 'Knight',        count: 1 },
           { role: 'Guard',         count: 1 },
           { role: 'Witch',         count: 1 },
@@ -126,7 +126,7 @@ const GAME_MODES = {
       {
         id: 'village', label: '🏘 Village Side', color: 'side-village',
         roles: [
-          { role: 'ProphetTeller', count: 1 },
+          { role: 'Prophet', count: 1 },
           { role: 'Witch',         count: 1 },
           { role: 'Hunter',        count: 1 },
           { role: 'Peasant',       count: 4 },
@@ -168,15 +168,15 @@ async function loadState() {
         participants: participants.filter(p => p.game_id === g.id),
       }));
 
-      showBanner('☁️  Connected to Supabase — data is shared across all devices.', 'info');
+      showBanner(t('bannerConnected'), 'info');
     } catch (err) {
       console.error('Supabase load error:', err);
-      showBanner('⚠️  Supabase error — falling back to local storage.', 'warn');
+      showBanner(t('bannerSupabaseErr'), 'warn');
       loadLocalState();
     }
   } else {
     loadLocalState();
-    showBanner('💾  Running in local mode. Configure Supabase in supabase.js to share data.', 'warn');
+    showBanner(t('bannerLocalMode'), 'warn');
   }
 }
 
@@ -213,7 +213,7 @@ async function saveGame(game) {
       return gameId;
     } catch (err) {
       console.error('Supabase save error:', err);
-      toast('⚠️ Cloud save failed — saved locally instead.');
+      toast(t('toastCloudFail'));
     }
   }
   // Fallback: localStorage
@@ -229,7 +229,7 @@ async function savePlayer(player) {
       return inserted;
     } catch (err) {
       console.error('Supabase save error:', err);
-      toast('⚠️ Cloud save failed — saved locally instead.');
+      toast(t('toastCloudFail'));
     }
   }
   state.players.push(player);
@@ -385,9 +385,9 @@ function showQuickAdd() {
 }
 document.getElementById('quickadd-confirm').addEventListener('click', async () => {
   const name = document.getElementById('quickadd-name').value.trim();
-  if (!name) { toast('Please enter a name.'); return; }
+  if (!name) { toast(t('toastEnterName')); return; }
   if (state.players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-    toast('That name already exists.'); return;
+    toast(t('toastNameExists')); return;
   }
   const player = { id: uid(), name };
   const saved  = await savePlayer(player);
@@ -425,16 +425,16 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 document.getElementById('add-player-btn').addEventListener('click', async () => {
   const input = document.getElementById('new-player-name');
   const name  = input.value.trim();
-  if (!name) { toast('Please enter a name.'); return; }
+  if (!name) { toast(t('toastEnterName')); return; }
   if (state.players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-    toast('A player with that name already exists.'); return;
+    toast(t('toastNameExists')); return;
   }
   const player = { id: uid(), name };
   const saved  = await savePlayer(player);
   if (!state.players.find(p => p.id === saved.id)) state.players.push(saved);
   input.value = '';
   renderPlayersList();
-  toast(`${name} added to the family.`);
+  toast(t('toastPlayerAdded', name));
 });
 document.getElementById('new-player-name').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('add-player-btn').click();
@@ -443,7 +443,7 @@ document.getElementById('new-player-name').addEventListener('keydown', e => {
 function renderPlayersList() {
   const container = document.getElementById('players-list-container');
   if (state.players.length === 0) {
-    container.innerHTML = '<p class="empty-state">No players added yet.</p>';
+    container.innerHTML = `<p class="empty-state">${t('playersEmpty')}</p>`;
     return;
   }
   const sorted = [...state.players].sort((a, b) => a.name.localeCompare(b.name));
@@ -453,7 +453,7 @@ function renderPlayersList() {
       return `<div class="player-card">
         <div>
           <div class="player-card-name">${esc(p.name)}</div>
-          <div class="player-card-stats">${s.totalGames} games · ${s.score} pts · ${s.winRate}% win rate</div>
+          <div class="player-card-stats">${t('playerCardStats', s.totalGames, s.score, s.winRate)}</div>
         </div>
         <button class="btn-icon" title="Remove player" onclick="removePlayer('${p.id}')">🗑</button>
       </div>`;
@@ -465,16 +465,14 @@ async function removePlayer(id) {
   const player = getPlayerById(id);
   if (!player) return;
   const inGames = state.games.some(g => g.participants.some(p => (p.playerId||p.player_id) === id));
-  const msg = inGames
-    ? `${player.name} has recorded games. Removing them will delete their participation records. Are you sure?`
-    : `Remove ${player.name} from the roster?`;
-  const confirmed = await showModal('Remove Player', msg);
+  const msg = t('removePlayerMsg', player.name, inGames);
+  const confirmed = await showModal(t('removePlayerTitle'), msg);
   if (!confirmed) return;
   await deletePlayerRemote(id);
   state.players = state.players.filter(p => p.id !== id);
   state.games.forEach(g => { g.participants = g.participants.filter(p => (p.playerId||p.player_id) !== id); });
   renderPlayersList();
-  toast(`${player.name} removed.`);
+  toast(t('toastPlayerRemoved'));
 }
 
 // ═══════════════════════════════════════════
@@ -495,7 +493,7 @@ function activateMode(modeKey) {
 
   document.getElementById('log-step-mode').style.display   = 'none';
   document.getElementById('log-step-assign').style.display = 'block';
-  document.getElementById('active-mode-label').textContent = GAME_MODES[modeKey].label;
+  document.getElementById('active-mode-label').textContent = tMode(modeKey);
 
   buildRoleAssignmentUI(modeKey);
   buildWinnerButtons(modeKey);
@@ -504,10 +502,15 @@ function activateMode(modeKey) {
 }
 
 document.getElementById('back-to-mode-btn').addEventListener('click', () => {
-  document.getElementById('log-step-assign').style.display = 'none';
-  document.getElementById('log-step-mode').style.display   = 'block';
+  document.getElementById('log-step-assign').style.display  = 'none';
+  document.getElementById('log-step-mode').style.display    = 'block';
+  // Clear all role/winner/watcher state so the next mode starts completely fresh
+  document.getElementById('sides-container').innerHTML       = '';
+  document.getElementById('winner-side-container').innerHTML = '';
+  document.getElementById('watcher-list').innerHTML          = '';
   activeMode     = null;
   selectedWinner = null;
+  watcherCount   = 0;
 });
 
 // ═══════════════════════════════════════════
@@ -524,7 +527,7 @@ function buildRoleAssignmentUI(modeKey) {
 
     return `
       <div class="side-block ${side.color}">
-        <div class="side-header">${side.label}</div>
+        <div class="side-header">${tSide(side.id)}</div>
         <div class="side-roles">${roleRows}</div>
       </div>`;
   }).join('');
@@ -534,14 +537,14 @@ function buildRoleAssignmentUI(modeKey) {
 }
 
 function buildRoleRow(sideId, role, index, total) {
-  const label = total > 1 ? `${role} ${index + 1}` : role;
+  const label = total > 1 ? `${tRole(role)} ${index + 1}` : tRole(role);
   const key   = `${sideId}__${role}__${index}`;
   return `
     <div class="role-row" data-side="${sideId}" data-role="${role}" data-key="${key}">
       <span class="role-label">${label}</span>
       <select class="player-select" data-key="${key}">
-        <option value="">— Assign player —</option>
-        <option value="__new__">➕ Add new player…</option>
+        <option value="">${t('assignPh')}</option>
+        <option value="__new__">${t('addNewPlayer')}</option>
         ${state.players.map(p =>
           `<option value="${p.id}">${esc(p.name)}</option>`
         ).join('')}
@@ -568,8 +571,8 @@ function refreshAllPlayerSelects() {
   document.querySelectorAll('.player-select').forEach(sel => {
     const current = sel.value;
     sel.innerHTML = `
-      <option value="">— Assign player —</option>
-      <option value="__new__">➕ Add new player…</option>
+      <option value="">${t('assignPh')}</option>
+      <option value="__new__">${t('addNewPlayer')}</option>
       ${state.players.map(p =>
         `<option value="${p.id}" ${p.id === current ? 'selected' : ''}>${esc(p.name)}</option>`
       ).join('')}`;
@@ -586,7 +589,7 @@ function buildWinnerButtons(modeKey) {
   container.innerHTML = mode.sides.map(side => `
     <button class="winner-btn ${side.color}" data-side="${side.id}"
       onclick="selectWinner('${side.id}', this)">
-      ${side.label} wins
+      ${tSide(side.id)} ${t('winsLabel')}
     </button>`
   ).join('');
 }
@@ -613,8 +616,8 @@ function addWatcherRow() {
   row.innerHTML = `
     <div class="form-group" style="flex:1">
       <select class="player-select watcher-select">
-        <option value="">— Select watcher —</option>
-        <option value="__new__">➕ Add new player…</option>
+        <option value="">${t('watcherPh')}</option>
+        <option value="__new__">${t('addNewPlayer')}</option>
         ${state.players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}
       </select>
     </div>
@@ -629,9 +632,9 @@ function addWatcherRow() {
 document.getElementById('save-game-btn').addEventListener('click', async () => {
   const date  = document.getElementById('game-date').value;
   const notes = document.getElementById('game-notes').value.trim();
-  if (!date)        { toast('Please select a date.'); return; }
-  if (!activeMode)  { toast('Please select a game mode.'); return; }
-  if (!selectedWinner) { toast('Please select the winning side.'); return; }
+  if (!date)        { toast(t('toastSelectDate')); return; }
+  if (!activeMode)  { toast(t('toastSelectMode')); return; }
+  if (!selectedWinner) { toast(t('toastSelectWinner')); return; }
 
   // Collect role assignments
   const roleRows   = document.querySelectorAll('#sides-container .role-row');
@@ -645,12 +648,12 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
     const playerId = row.querySelector('.player-select').value;
 
     if (!playerId || playerId === '__new__') {
-      toast(`Please assign a player to every role (or remove empty rows).`);
+      toast(t('toastAssignAll'));
       valid = false; return;
     }
     if (seenIds.has(playerId)) {
       const name = getPlayerById(playerId)?.name || 'Someone';
-      toast(`${name} is assigned to more than one role.`);
+      toast(t('toastDuplicate', name));
       valid = false; return;
     }
     seenIds.add(playerId);
@@ -666,7 +669,7 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
     const playerId = sel.value;
     if (!playerId || playerId === '__new__') return;
     if (seenIds.has(playerId)) {
-      toast(`${getPlayerById(playerId)?.name || 'Someone'} is both playing and watching.`);
+      toast(t('toastBothWatchPlay', getPlayerById(playerId)?.name || '?'));
       valid = false; return;
     }
     seenIds.add(playerId);
@@ -678,20 +681,20 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
   const game = { id: uid(), date, notes, mode: activeMode, participants };
   const btn  = document.getElementById('save-game-btn');
   btn.disabled   = true;
-  btn.textContent = 'Saving…';
+  btn.textContent = t('savingBtn');
 
   try {
     await saveGame(game);
     if (!state.games.find(g => g.id === game.id)) state.games.unshift(game);
-    toast('Game saved! The family records have been updated.');
+    toast(t('toastGameSaved'));
     resetLogForm();
     renderLeaderboard();
   } catch (err) {
-    toast('Error saving game. Check console.');
+    toast(t('toastGameSaveErr'));
     console.error(err);
   } finally {
     btn.disabled   = false;
-    btn.textContent = 'Save Game';
+    btn.textContent = t('saveGameBtn');
   }
 });
 
@@ -713,7 +716,7 @@ function renderLeaderboard() {
   const container   = document.getElementById('leaderboard-container');
   const leaderboard = getLeaderboard();
   if (leaderboard.length === 0) {
-    container.innerHTML = '<p class="empty-state">No players yet. Add players in the Players tab.</p>';
+    container.innerHTML = `<p class="empty-state">${t('leaderboardEmpty')}</p>`;
     return;
   }
   const rows = leaderboard.map(({ player, stats }, idx) => {
@@ -739,10 +742,10 @@ function renderLeaderboard() {
   container.innerHTML = `
     <table class="leaderboard-table">
       <thead><tr>
-        <th>#</th><th>Player</th>
-        <th class="num">Score</th><th class="num">Played</th>
-        <th class="num">Watched</th><th>Win Rate</th>
-        <th class="num">Wins</th><th class="num">Losses</th>
+        <th>${t('colRank')}</th><th>${t('colPlayer')}</th>
+        <th class="num">${t('colScore')}</th><th class="num">${t('colPlayed')}</th>
+        <th class="num">${t('colWatched')}</th><th>${t('colWinRate')}</th>
+        <th class="num">${t('colWins')}</th><th class="num">${t('colLosses')}</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -754,13 +757,13 @@ function renderLeaderboard() {
 function renderHistory() {
   const container = document.getElementById('history-container');
   if (state.games.length === 0) {
-    container.innerHTML = '<p class="empty-state">No games logged yet.</p>';
+    container.innerHTML = `<p class="empty-state">${t('historyEmpty')}</p>`;
     return;
   }
   container.innerHTML = state.games.map(game => {
     const played  = game.participants.filter(p => p.status === 'played').length;
     const watched = game.participants.filter(p => p.status === 'watched').length;
-    const modeLabel = game.mode ? (GAME_MODES[game.mode]?.label || game.mode) : '';
+    const modeLabel = game.mode ? tMode(game.mode) : '';
 
     // Group players by side
     const sideMap = {};
@@ -777,19 +780,19 @@ function renderHistory() {
       const name   = player ? esc(player.name) : '<em>Deleted</em>';
       let badge, pts;
       if (p.status === 'watched') {
-        badge = `<span class="badge badge-watch">Watched</span>`;
+        badge = `<span class="badge badge-watch">${t('badgeWatch')}</span>`;
         pts   = `+${SCORE.WATCH}`;
       } else if (p.outcome === 'won') {
-        badge = `<span class="badge badge-win">Won</span>`;
+        badge = `<span class="badge badge-win">${t('badgeWon')}</span>`;
         pts   = `+${SCORE.WIN}`;
       } else {
-        badge = `<span class="badge badge-loss">Lost</span>`;
+        badge = `<span class="badge badge-loss">${t('badgeLost')}</span>`;
         pts   = `+${SCORE.LOSS}`;
       }
-      const sideLabel = p.sideId || p.side_id || '—';
+      const sideLabel = (p.sideId || p.side_id) ? tSide(p.sideId || p.side_id) : '—';
       return `<tr>
         <td>${name}</td>
-        <td>${p.role ? esc(p.role) : '—'}</td>
+        <td>${p.role ? tRole(p.role) : '—'}</td>
         <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted)">${sideLabel}</td>
         <td>${badge}</td>
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--gold-dim)">${pts}</td>
@@ -804,15 +807,15 @@ function renderHistory() {
             ${modeLabel ? `<span class="badge badge-mode">${esc(modeLabel)}</span>` : ''}
             ${game.notes ? `<span class="history-notes">${esc(game.notes)}</span>` : ''}
           </div>
-          <div class="history-summary">${played} played · ${watched} watched</div>
+          <div class="history-summary">${t('historySummary', played, watched)}</div>
         </div>
         <div class="history-body" id="body-${game.id}" style="display:none">
           <table>
-            <thead><tr><th>Player</th><th>Role</th><th>Side</th><th>Outcome</th><th>Pts</th></tr></thead>
+            <thead><tr><th>${t('colPlayer')}</th><th>${t('colRole')}</th><th>${t('colSide')}</th><th>${t('colOutcome')}</th><th>${t('colPts')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
           <div class="history-actions admin-action" style="display:${isAdmin?'':'none'}">
-            <button class="btn btn-danger" onclick="deleteGame('${game.id}')">Delete Game</button>
+            <button class="btn btn-danger" onclick="deleteGame('${game.id}')">${t('deleteGameBtn')}</button>
           </div>
         </div>
       </div>`;
@@ -828,16 +831,59 @@ async function deleteGame(gameId) {
   const game = state.games.find(g => g.id === gameId);
   if (!game) return;
   const confirmed = await showModal(
-    'Delete Game',
-    `Delete the game from ${formatDate(game.date)}? This cannot be undone.`
+    t('deleteGameTitle'),
+    t('deleteGameMsg', formatDate(game.date))
   );
   if (!confirmed) return;
   await deleteGameRemote(gameId);
   state.games = state.games.filter(g => g.id !== gameId);
   renderHistory();
   renderLeaderboard();
-  toast('Game deleted.');
+  toast(t('toastGameDeleted'));
 }
+
+// ═══════════════════════════════════════════
+//  LANGUAGE TOGGLE
+// ═══════════════════════════════════════════
+
+/** Walk all [data-i18n] elements and update their text + placeholders */
+function applyTranslations() {
+  // Text content
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val && typeof val === 'string') el.textContent = val;
+  });
+
+  // Placeholder attributes
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    const val = t(key);
+    if (val) el.placeholder = val;
+  });
+
+  // Lang button label (shows the OTHER language to switch to)
+  const langBtn = document.getElementById('lang-btn');
+  if (langBtn) langBtn.textContent = t('langBtn');
+
+  // Admin lock button tooltip
+  const lockBtn = document.getElementById('admin-lock-btn');
+  if (lockBtn) lockBtn.title = isAdmin ? t('adminLockHint') : t('adminLoginHint');
+
+  // Re-render dynamic sections so their injected HTML is also translated
+  renderLeaderboard();
+  renderPlayersList();
+  renderHistory();
+
+  // Update html lang attribute
+  document.documentElement.lang = currentLang;
+}
+
+// Lang toggle button
+document.getElementById('lang-btn').addEventListener('click', () => {
+  setLang(currentLang === 'zh' ? 'en' : 'zh');
+  applyTranslations();
+});
 
 // ═══════════════════════════════════════════
 //  ADMIN MODE
@@ -854,7 +900,7 @@ function applyAdminState() {
     document.querySelectorAll('.admin-action').forEach(el => el.style.display = '');
     badge.classList.remove('hidden');
     lockBtn.textContent = '🔓';
-    lockBtn.title = 'Lock admin mode';
+    lockBtn.title = t('adminLockHint');
   } else {
     // Hide admin tabs
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
@@ -862,7 +908,7 @@ function applyAdminState() {
     document.querySelectorAll('.admin-action').forEach(el => el.style.display = 'none');
     badge.classList.add('hidden');
     lockBtn.textContent = '🔒';
-    lockBtn.title = 'Admin login';
+    lockBtn.title = t('adminLoginHint');
     // If currently on an admin-only tab, redirect to leaderboard
     const activeTab = document.querySelector('.tab-btn.active');
     if (activeTab && activeTab.classList.contains('admin-only')) {
@@ -878,12 +924,12 @@ document.getElementById('admin-lock-btn').addEventListener('click', () => {
     isAdmin = false;
     sessionStorage.removeItem('mafiaAdmin');
     applyAdminState();
-    toast('Admin mode locked.');
+    toast(t('adminLockToast'));
   } else {
     // Not admin — open login modal
     document.getElementById('admin-password-input').value = '';
     document.getElementById('admin-error').classList.add('hidden');
-    document.getElementById('admin-modal-title').textContent = 'Admin Login';
+    document.getElementById('admin-modal-title').textContent = t('adminModalTitle');
     document.getElementById('admin-modal-overlay').classList.remove('hidden');
     setTimeout(() => document.getElementById('admin-password-input').focus(), 50);
   }
@@ -896,7 +942,7 @@ document.getElementById('admin-login-btn').addEventListener('click', () => {
     sessionStorage.setItem('mafiaAdmin', 'yes');
     document.getElementById('admin-modal-overlay').classList.add('hidden');
     applyAdminState();
-    toast('Admin mode unlocked. Welcome back, Don.');
+    toast(t('adminUnlockToast'));
   } else {
     document.getElementById('admin-error').classList.remove('hidden');
     document.getElementById('admin-password-input').value = '';
@@ -918,7 +964,5 @@ document.getElementById('admin-password-input').addEventListener('keydown', e =>
 (async () => {
   await loadState();
   applyAdminState();
-  renderLeaderboard();
-  renderPlayersList();
-  renderHistory();
+  applyTranslations();
 })();
