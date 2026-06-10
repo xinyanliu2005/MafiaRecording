@@ -953,40 +953,7 @@ function renderHistory() {
     const played  = game.participants.filter(p => p.status === 'played').length;
     const watched = game.participants.filter(p => p.status === 'watched').length;
 
-    if (game.mode === 'blackbox' && !isAdmin) return '';
-        if (game.mode === 'blackbox') {
-      const p      = game.participants[0];
-      const pid    = p?.playerId || p?.player_id;
-      const player = getPlayerById(pid);
-      const name   = player ? esc(player.name) : '<em>' + t('badgeDeleted') + '</em>';
-      const delta  = p?.adjustment || p?.delta || 0;
-      const sign   = delta >= 0 ? '+' : '';
-      const cls    = delta >= 0 ? 'bb-positive' : 'bb-negative';
-      return `
-        <div class="history-game" id="game-${game.id}">
-          <div class="history-game-header" onclick="toggleHistory('${game.id}')">
-            <div class="history-game-title">
-              <span class="history-date">${formatDate(game.date)}</span>
-              <span class="badge badge-blackbox">🎲 ${t('blackboxBadge')}</span>
-              ${game.notes ? `<span class="history-notes">${esc(game.notes)}</span>` : ''}
-            </div>
-            <div class="history-summary">${name} <span class="${cls}">${sign}${delta} pts</span></div>
-          </div>
-          <div class="history-body" id="body-${game.id}" style="display:none">
-            <table>
-              <thead><tr><th>${t('colPlayer')}</th><th>${t('blackboxReason')}</th><th>${t('colPts')}</th></tr></thead>
-              <tbody><tr>
-                <td>${name}</td>
-                <td>${game.notes ? esc(game.notes) : '—'}</td>
-                <td style="font-family:var(--font-mono);font-size:0.9rem" class="${cls}">${sign}${delta}</td>
-              </tr></tbody>
-            </table>
-            <div class="history-actions" style="display:${isAdmin?'flex':'none'}">
-              <button class="btn btn-danger" onclick="deleteGame('${game.id}')">${t('deleteGameBtn')}</button>
-            </div>
-          </div>
-        </div>`;
-    }
+    if (game.mode === 'blackbox') return '';
 
     const modeLabel = game.mode ? tMode(game.mode) : '';
 
