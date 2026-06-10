@@ -979,7 +979,10 @@ function renderHistory() {
         <td>${p.role ? tRole(p.role) : '—'}</td>
         <td style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted)">${sideLabel}</td>
         <td>${badge}</td>
+        /* ORIGINAL (shows pts for everyone):
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--gold-dim)">${pts}</td>
+        */
+        ${isAdmin ? `<td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--gold-dim)">${pts}</td>` : ''}
       </tr>`;
     }).join('');
 
@@ -997,7 +1000,10 @@ function renderHistory() {
         </div>
         <div class="history-body" id="body-${game.id}" style="display:none">
           <table>
+            /* ORIGINAL (shows pts column for everyone):
             <thead><tr><th>${t('colPlayer')}</th><th>${t('colRole')}</th><th>${t('colSide')}</th><th>${t('colOutcome')}</th><th>${t('colPts')}</th></tr></thead>
+            */
+            <thead><tr><th>${t('colPlayer')}</th><th>${t('colRole')}</th><th>${t('colSide')}</th><th>${t('colOutcome')}</th>${isAdmin ? `<th>${t('colPts')}</th>` : ''}</tr></thead>
             <tbody>${rows}</tbody>
           </table>
           <div class="history-actions" style="display:${isAdmin?'flex':'none'}">
