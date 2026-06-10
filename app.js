@@ -192,10 +192,11 @@ async function saveGame(game) {
     try {
       // Insert game row
       const [inserted] = await sb.insert('games', {
-        id:    game.id,
-        date:  game.date,
-        notes: game.notes || null,
-        mode:  game.mode  || null,
+        id:           game.id,
+        date:         game.date,
+        notes:        game.notes        || null,
+        mode:         game.mode         || null,
+        double_score: game.doubleScore  || false,
       });
       const gameId = inserted.id;
 
@@ -300,12 +301,13 @@ function computePlayerStats(playerId) {
   for (const game of state.games) {
     const p = game.participants.find(x => (x.playerId || x.player_id) === playerId);
     if (!p) continue;
+    const mult = (game.double_score || game.doubleScore) ? 2 : 1;
     if (p.status === 'watched') {
-      score += SCORE.WATCH; watched++;
+      score += SCORE.WATCH * mult; watched++;
     } else if (p.status === 'played') {
       played++;
-      if (p.outcome === 'won') { score += SCORE.WIN;  wins++; }
-      else                     { score += SCORE.LOSS; losses++; }
+      if (p.outcome === 'won') { score += SCORE.WIN  * mult; wins++; }
+      else                     { score += SCORE.LOSS * mult; losses++; }
     }
   }
   const totalGames = wins + losses + watched;
@@ -630,8 +632,9 @@ function addWatcherRow() {
 //  SAVE GAME
 // ═══════════════════════════════════════════
 document.getElementById('save-game-btn').addEventListener('click', async () => {
-  const date  = document.getElementById('game-date').value;
-  const notes = document.getElementById('game-notes').value.trim();
+  const date        = document.getElementById('game-date').value;
+  const notes       = document.getElementById('game-notes').value.trim();
+  const doubleScore = document.getElementById('double-score-toggle').checked;
   if (!date)        { toast(t('toastSelectDate')); return; }
   if (!activeMode)  { toast(t('toastSelectMode')); return; }
   if (!selectedWinner) { toast(t('toastSelectWinner')); return; }
@@ -678,7 +681,7 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
 
   if (!valid) return;
 
-  const game = { id: uid(), date, notes, mode: activeMode, participants };
+  const game = { id: uid(), date, notes, mode: activeMode, doubleScore, participants };
   const btn  = document.getElementById('save-game-btn');
   btn.disabled   = true;
   btn.textContent = t('savingBtn');
@@ -699,8 +702,9 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
 });
 
 function resetLogForm() {
-  document.getElementById('game-date').value   = todayISO();
-  document.getElementById('game-notes').value  = '';
+  document.getElementById('game-date').value              = todayISO();
+  document.getElementById('game-notes').value             = '';
+  document.getElementById('double-score-toggle').checked  = false;
   document.getElementById('log-step-assign').style.display = 'none';
   document.getElementById('log-step-mode').style.display   = 'block';
   document.getElementById('sides-container').innerHTML      = '';
@@ -779,15 +783,16 @@ function renderHistory() {
       const player = getPlayerById(pid);
       const name   = player ? esc(player.name) : '<em>Deleted</em>';
       let badge, pts;
+      const mult = (game.double_score || game.doubleScore) ? 2 : 1;
       if (p.status === 'watched') {
         badge = `<span class="badge badge-watch">${t('badgeWatch')}</span>`;
-        pts   = `+${SCORE.WATCH}`;
+        pts   = `+${SCORE.WATCH * mult}`;
       } else if (p.outcome === 'won') {
         badge = `<span class="badge badge-win">${t('badgeWon')}</span>`;
-        pts   = `+${SCORE.WIN}`;
+        pts   = `+${SCORE.WIN * mult}`;
       } else {
         badge = `<span class="badge badge-loss">${t('badgeLost')}</span>`;
-        pts   = `+${SCORE.LOSS}`;
+        pts   = `+${SCORE.LOSS * mult}`;
       }
       const sideLabel = (p.sideId || p.side_id) ? tSide(p.sideId || p.side_id) : '—';
       return `<tr>
@@ -805,6 +810,7 @@ function renderHistory() {
           <div class="history-game-title">
             <span class="history-date">${formatDate(game.date)}</span>
             ${modeLabel ? `<span class="badge badge-mode">${esc(modeLabel)}</span>` : ''}
+            ${(game.double_score || game.doubleScore) ? `<span class="badge badge-double">${t('badgeDouble')}</span>` : ''}
             ${game.notes ? `<span class="history-notes">${esc(game.notes)}</span>` : ''}
           </div>
           <div class="history-summary">${t('historySummary', played, watched)}</div>

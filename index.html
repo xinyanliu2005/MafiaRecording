@@ -47,7 +47,7 @@
     <section id="tab-log-game" class="tab-content">
       <div class="section-header">
         <h2 data-i18n="logGameTitle">记录游戏</h2>
-        <span class="subtitle" data-i18n="logGameSubtitle">记录本局参与者的结果</span>
+        <span class="subtitle" data-i18n="logGameSubtitle">记录本局选手的结果</span>
       </div>
 
       <div id="log-step-mode">
@@ -60,6 +60,20 @@
             <div class="form-group">
               <label for="game-notes" data-i18n="labelNotes">备注（可选）</label>
               <input type="text" id="game-notes" data-i18n-ph="notesPh" placeholder="例：周五夜场 第3局" />
+            </div>
+          </div>
+
+          <div class="double-score-row">
+            <label class="double-score-label" for="double-score-toggle">
+              <span class="double-icon">⚡</span>
+              <span>
+                <span data-i18n="labelDoubleScore">双倍积分</span>
+                <span class="double-score-sub" data-i18n="doubleScoreDesc">本局所有积分 ×2</span>
+              </span>
+            </label>
+            <div class="toggle-wrap">
+              <input type="checkbox" id="double-score-toggle" class="toggle-input" />
+              <span class="toggle-slider"></span>
             </div>
           </div>
 
@@ -89,7 +103,7 @@
             </button>
             <button class="mode-card" data-mode="Jupiter">
               <span class="mode-icon">⚡</span>
-              <span class="mode-name" data-i18n="modeJupiter">木星</span>
+              <span class="mode-name" data-i18n="modeJupiter">丘比特</span>
               <span class="mode-desc" data-i18n="modeJupiterDesc">12人 · 外来势力</span>
             </button>
           </div>
@@ -116,8 +130,8 @@
           <hr class="divider" />
 
           <div class="participants-header">
-            <h3 data-i18n="watchersTitle">旁观者（可选）</h3>
-            <button class="btn btn-secondary" id="add-watcher-btn" data-i18n="addWatcherBtn">+ 添加旁观者</button>
+            <h3 data-i18n="watchersTitle">围观者（可选）</h3>
+            <button class="btn btn-secondary" id="add-watcher-btn" data-i18n="addWatcherBtn">+ 添加围观者</button>
           </div>
           <div id="watcher-list"></div>
 
