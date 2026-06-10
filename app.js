@@ -294,6 +294,11 @@ function computePlayerStats(playerId) {
   for (const game of state.games) {
     const p = game.participants.find(x => (x.playerId || x.player_id) === playerId);
     if (!p) continue;
+    // Blackbox adjustment — add raw delta directly, don't count as a game
+    if (game.mode === 'blackbox') {
+      score += (p.adjustment || p.delta || 0);
+      continue;
+    }
     const mult = (game.double_score || game.doubleScore) ? 2 : 1;
     if (p.status === 'watched') {
       score += SCORE.WATCH * mult; watched++;
@@ -857,7 +862,10 @@ function renderLeaderboard() {
     const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
     return `<tr>
       <td><span class="rank-badge ${rankClass}">${rank}</span></td>
-      <td class="player-name-cell">${esc(player.name)}</td>
+      <td class="player-name-cell">
+        ${esc(player.name)}
+        ${isAdmin ? `<button class="btn-blackbox admin-action" title="${t('blackboxTitle')}" onclick="openBlackbox('${player.id}')">🎲</button>` : ''}
+      </td>
       <td class="num"><span class="score-value">${stats.score}</span></td>
       <td class="num">${stats.played}</td>
       <td class="num">${stats.watched}</td>
@@ -885,6 +893,83 @@ function renderLeaderboard() {
 }
 
 // ═══════════════════════════════════════════
+//  BLACKBOX / 暗箱操作
+// ═══════════════════════════════════════════
+
+function openBlackbox(playerId) {
+  if (!isAdmin) return;
+  const player = getPlayerById(playerId);
+  if (!player) return;
+  const stats  = computePlayerStats(playerId);
+
+  // Build modal content
+  const overlay = document.getElementById('blackbox-overlay');
+  document.getElementById('bb-player-name').textContent  = player.name;
+  document.getElementById('bb-current-score').textContent = stats.score;
+  document.getElementById('bb-delta-input').value         = '';
+  document.getElementById('bb-reason-input').value        = '';
+  document.getElementById('bb-preview').textContent       = '';
+  overlay.dataset.playerId = playerId;
+  overlay.classList.remove('hidden');
+  document.getElementById('bb-delta-input').focus();
+}
+
+// Live preview
+document.getElementById('bb-delta-input').addEventListener('input', () => {
+  const overlay  = document.getElementById('blackbox-overlay');
+  const playerId = overlay.dataset.playerId;
+  const delta    = parseInt(document.getElementById('bb-delta-input').value, 10);
+  const stats    = computePlayerStats(playerId);
+  const preview  = document.getElementById('bb-preview');
+  if (isNaN(delta) || delta === 0) { preview.textContent = ''; return; }
+  const newScore = stats.score + delta;
+  const sign     = delta > 0 ? '+' : '';
+  preview.textContent = `${stats.score} ${sign}${delta} = ${newScore}`;
+  preview.className   = delta > 0 ? 'bb-preview positive' : 'bb-preview negative';
+});
+
+document.getElementById('bb-cancel-btn').addEventListener('click', () => {
+  document.getElementById('blackbox-overlay').classList.add('hidden');
+});
+
+document.getElementById('bb-confirm-btn').addEventListener('click', async () => {
+  const overlay  = document.getElementById('blackbox-overlay');
+  const playerId = overlay.dataset.playerId;
+  const delta    = parseInt(document.getElementById('bb-delta-input').value, 10);
+  const reason   = document.getElementById('bb-reason-input').value.trim();
+
+  if (isNaN(delta) || delta === 0) { toast(t('toastBBNoDelta')); return; }
+
+  const game = {
+    id:           uid(),
+    date:         todayISO(),
+    notes:        reason || null,
+    mode:         'blackbox',
+    doubleScore:  false,
+    coupleIds:    null,
+    participants: [{ playerId, status: 'blackbox', adjustment: delta, role: null, sideId: null, outcome: null }],
+  };
+
+  const btn = document.getElementById('bb-confirm-btn');
+  btn.disabled = true;
+
+  try {
+    await saveGame(game);
+    if (!state.games.find(g => g.id === game.id)) state.games.unshift(game);
+    overlay.classList.add('hidden');
+    renderLeaderboard();
+    renderHistory();
+    const sign = delta > 0 ? '+' : '';
+    toast(t('toastBBSaved', getPlayerById(playerId)?.name, sign + delta));
+  } catch (err) {
+    toast(t('toastGameSaveErr'));
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ═══════════════════════════════════════════
 //  GAME HISTORY
 // ═══════════════════════════════════════════
 function renderHistory() {
@@ -896,6 +981,42 @@ function renderHistory() {
   container.innerHTML = state.games.map(game => {
     const played  = game.participants.filter(p => p.status === 'played').length;
     const watched = game.participants.filter(p => p.status === 'watched').length;
+
+    // Blackbox entry — render as a simple one-row adjustment card
+    if (game.mode === 'blackbox') {
+      const p      = game.participants[0];
+      const pid    = p?.playerId || p?.player_id;
+      const player = getPlayerById(pid);
+      const name   = player ? esc(player.name) : '<em>' + t('badgeDeleted') + '</em>';
+      const delta  = p?.adjustment || p?.delta || 0;
+      const sign   = delta >= 0 ? '+' : '';
+      const cls    = delta >= 0 ? 'bb-positive' : 'bb-negative';
+      return `
+        <div class="history-game" id="game-${game.id}">
+          <div class="history-game-header" onclick="toggleHistory('${game.id}')">
+            <div class="history-game-title">
+              <span class="history-date">${formatDate(game.date)}</span>
+              <span class="badge badge-blackbox">🎲 ${t('blackboxBadge')}</span>
+              ${game.notes ? `<span class="history-notes">${esc(game.notes)}</span>` : ''}
+            </div>
+            <div class="history-summary">${name} <span class="${cls}">${sign}${delta} pts</span></div>
+          </div>
+          <div class="history-body" id="body-${game.id}" style="display:none">
+            <table>
+              <thead><tr><th>${t('colPlayer')}</th><th>${t('blackboxReason')}</th><th>${t('colPts')}</th></tr></thead>
+              <tbody><tr>
+                <td>${name}</td>
+                <td>${game.notes ? esc(game.notes) : '—'}</td>
+                <td style="font-family:var(--font-mono);font-size:0.9rem" class="${cls}">${sign}${delta}</td>
+              </tr></tbody>
+            </table>
+            <div class="history-actions admin-action" style="display:${isAdmin?'':'none'}">
+              <button class="btn btn-danger" onclick="deleteGame('${game.id}')">${t('deleteGameBtn')}</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
     const modeLabel = game.mode ? tMode(game.mode) : '';
 
     // Group players by side

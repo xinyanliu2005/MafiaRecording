@@ -10,7 +10,7 @@
 
   <header>
     <div class="header-inner">
-      <div class="header-icon">🔫</div>
+      <div class="header-icon">🐺</div>
       <div class="header-titles">
         <h1 data-i18n="siteTitle">狼人杀档案</h1>
         <p class="tagline" data-i18n="siteTagline">狼人杀 · 积分记录系统</p>
@@ -236,6 +236,32 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="admin-login-btn" data-i18n="adminUnlockBtn">解锁</button>
         <button class="btn btn-secondary" id="admin-modal-cancel" data-i18n="adminCancelBtn">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLACKBOX MODAL -->
+  <div id="blackbox-overlay" class="modal-overlay hidden" data-player-id="">
+    <div class="modal modal-blackbox">
+      <div class="bb-header">
+        <span class="bb-icon">🎲</span>
+        <div>
+          <h3 data-i18n="blackboxTitle">暗箱操作</h3>
+          <p class="bb-player-label"><span id="bb-player-name"></span> &nbsp;·&nbsp; <span data-i18n="bbCurrentScore">当前积分</span>: <strong id="bb-current-score"></strong></p>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0.75rem">
+        <label data-i18n="bbDeltaLabel">调整积分（正数加分，负数扣分）</label>
+        <input type="number" id="bb-delta-input" placeholder="e.g. +10 or -5" style="margin-top:0.4rem" />
+      </div>
+      <div id="bb-preview" class="bb-preview"></div>
+      <div class="form-group" style="margin-bottom:1.25rem">
+        <label data-i18n="bbReasonLabel">原因备注（可选）</label>
+        <input type="text" id="bb-reason-input" data-i18n-ph="bbReasonPh" placeholder="例：特别奖励" style="margin-top:0.4rem" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="bb-confirm-btn" data-i18n="bbConfirmBtn">确认调整</button>
+        <button class="btn btn-secondary" id="bb-cancel-btn" data-i18n="cancelBtn">取消</button>
       </div>
     </div>
   </div>
