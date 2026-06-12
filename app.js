@@ -675,25 +675,53 @@ function refreshAllPlayerSelects() {
  * Skips the Jupiter couple selects so the same player can appear twice there.
  */
 function filterUsedPlayers() {
+  const SELECTOR = '#sides-container .player-select, #custom-roles-section .player-select, .watcher-select';
+
   // Collect all currently selected playerIds from role + watcher selects
   // (exclude couple selects)
   const usedIds = new Set();
-  document.querySelectorAll(
-    '#sides-container .player-select, #custom-roles-section .player-select, .watcher-select'
-  ).forEach(sel => {
+  document.querySelectorAll(SELECTOR).forEach(sel => {
     if (sel.value && sel.value !== '__new__') usedIds.add(sel.value);
   });
 
-  // Now update every role/watcher select — hide used players except the one this select owns
-  document.querySelectorAll(
-    '#sides-container .player-select, #custom-roles-section .player-select, .watcher-select'
-  ).forEach(sel => {
+  // Rebuild each select's option list — removing (not hiding) used players.
+  // iOS Safari does not respect <option hidden>, so we must add/remove
+  // the actual <option> elements instead.
+  document.querySelectorAll(SELECTOR).forEach(sel => {
     const ownValue = sel.value;
+
+    // Determine which player IDs should be visible in this select
+    const visiblePlayerIds = state.players
+      .filter(p => !usedIds.has(p.id) || p.id === ownValue)
+      .map(p => p.id);
+
+    // Build the set of option values currently present (excluding blank/__new__)
+    const currentValues = Array.from(sel.options)
+      .map(o => o.value)
+      .filter(v => v && v !== '__new__');
+
+    const visibleSet = new Set(visiblePlayerIds);
+    const currentSet = new Set(currentValues);
+
+    // Remove options that should no longer be visible
     Array.from(sel.options).forEach(opt => {
-      if (!opt.value || opt.value === '__new__') return; // keep blank + add-new
-      // Hide if used by someone else; show if it's this select's own value or not used
-      opt.hidden = usedIds.has(opt.value) && opt.value !== ownValue;
+      if (!opt.value || opt.value === '__new__') return;
+      if (!visibleSet.has(opt.value)) sel.removeChild(opt);
     });
+
+    // Add options that should be visible but aren't present yet
+    visiblePlayerIds.forEach(pid => {
+      if (currentSet.has(pid)) return;
+      const player = getPlayerById(pid);
+      if (!player) return;
+      const opt = document.createElement('option');
+      opt.value       = player.id;
+      opt.textContent = player.name;
+      sel.appendChild(opt);
+    });
+
+    // Restore the select's own value (it may have been removed/re-added)
+    if (ownValue) sel.value = ownValue;
   });
 }
 
