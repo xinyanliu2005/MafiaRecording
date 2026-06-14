@@ -1402,3 +1402,38 @@ select option {
   color: var(--gold);
   font-size: 1.1rem;
 }
+
+/* ═══════════════════════════════════════════
+   MVP SELECTION
+═══════════════════════════════════════════ */
+.mvp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.mvp-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.mvp-row select {
+  flex: 1;
+  max-width: 320px;
+}
+
+.mvp-desc {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+/* MVP badge in history */
+.badge-mvp {
+  background: rgba(212,168,76,0.18);
+  color: var(--gold);
+  border: 1px solid var(--gold-dim);
+  font-weight: 700;
+}

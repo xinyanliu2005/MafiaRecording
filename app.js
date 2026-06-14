@@ -10,6 +10,7 @@ let isAdmin = sessionStorage.getItem('mafiaAdmin') === 'yes';
 
 // ─── Scoring ─────────────────────────────────
 const SCORE = { WIN: 25, LOSS: 17, WATCH: 15 };
+const MVP_BONUS = 5;
 
 // ─── Game Mode Definitions ───────────────────
 const GAME_MODES = {
@@ -190,6 +191,7 @@ async function saveGame(game) {
         notes:        game.notes       || null,
         mode:         game.mode        || null,
         double_score: game.doubleScore || false,
+        mvp_player_id: game.mvpPlayerId || null,
       });
       const gameId = inserted.id;
 
@@ -303,8 +305,14 @@ function computePlayerStats(playerId) {
       score += SCORE.WATCH * mult; watched++;
     } else if (p.status === 'played') {
       played++;
-      if (p.outcome === 'won') { score += SCORE.WIN  * mult; wins++; }
-      else                     { score += SCORE.LOSS * mult; losses++; }
+      if (p.outcome === 'won') {
+        score += SCORE.WIN * mult; wins++;
+        // MVP bonus — only applies if the MVP also won
+        const mvpId = game.mvpPlayerId || game.mvp_player_id;
+        if (mvpId && mvpId === playerId) score += MVP_BONUS * mult;
+      } else {
+        score += SCORE.LOSS * mult; losses++;
+      }
     }
   }
   const totalGames = wins + losses + watched;
@@ -513,6 +521,8 @@ function activateMode(modeKey) {
   buildWinnerButtons(modeKey);
   document.getElementById('watcher-list').innerHTML = '';
   watcherCount = 0;
+  document.getElementById('mvp-select').value = '';
+  populateMvpDropdown();
 }
 
 document.getElementById('back-to-mode-btn').addEventListener('click', () => {
@@ -534,6 +544,8 @@ document.getElementById('back-to-mode-btn').addEventListener('click', () => {
   couplePlayer2  = null;
   document.getElementById('jupiter-couple-section').style.display = 'none';
   document.getElementById('couple-type-indicator').innerHTML = '';
+  document.getElementById('mvp-select').innerHTML = '<option value="">— —</option>';
+  document.getElementById('mvp-select').value     = '';
 });
 
 // ═══════════════════════════════════════════
@@ -623,6 +635,7 @@ function rebuildCustomRoleRows() {
   buildCustomSideRows('custom-village-roles', 'village', villageCount, prevVillage);
   updateCustomHeaders(wolfCount, villageCount);
   filterUsedPlayers();
+  populateMvpDropdown();
 }
 
 function buildCustomSideRows(containerId, sideId, count, prevData = []) {
@@ -712,6 +725,7 @@ function wirePlayerSelect(sel) {
     }
     // After any selection change, hide already-used players from other dropdowns
     filterUsedPlayers();
+    populateMvpDropdown();
   });
 }
 
@@ -727,6 +741,7 @@ function refreshAllPlayerSelects() {
     wirePlayerSelect(sel);
   });
   filterUsedPlayers();
+  populateMvpDropdown();
 }
 
 /**
@@ -782,6 +797,50 @@ function filterUsedPlayers() {
     // Restore the select's own value (it may have been removed/re-added)
     if (ownValue) sel.value = ownValue;
   });
+}
+
+/**
+ * Populate the MVP dropdown with all currently-assigned players
+ * (from role rows — both standard and custom modes). Watchers are excluded.
+ * Preserves the currently selected MVP if they're still assigned.
+ */
+function populateMvpDropdown() {
+  const sel = document.getElementById('mvp-select');
+  if (!sel) return;
+
+  const current = sel.value;
+
+  // Gather all assigned players from role rows (standard + custom)
+  const assigned = [];
+  document.querySelectorAll('#sides-container .role-row, #custom-roles-section .custom-role-row')
+    .forEach(row => {
+      const playerSel = row.querySelector('.player-select');
+      const pid = playerSel?.value;
+      if (pid && pid !== '__new__') {
+        const player = getPlayerById(pid);
+        if (player) assigned.push(player);
+      }
+    });
+
+  sel.innerHTML = '';
+  const noneOpt = document.createElement('option');
+  noneOpt.value       = '';
+  noneOpt.textContent = t('mvpNone');
+  sel.appendChild(noneOpt);
+
+  assigned.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value       = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+
+  // Restore previous selection if that player is still assigned
+  if (current && assigned.some(p => p.id === current)) {
+    sel.value = current;
+  } else {
+    sel.value = '';
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -943,7 +1002,7 @@ function addWatcherRow() {
   const removeBtn = document.createElement('button');
   removeBtn.className   = 'btn-icon';
   removeBtn.textContent = '✕';
-  removeBtn.onclick     = () => { row.remove(); filterUsedPlayers(); };
+  removeBtn.onclick     = () => { row.remove(); filterUsedPlayers(); populateMvpDropdown(); };
 
   row.appendChild(wrap);
   row.appendChild(removeBtn);
@@ -952,6 +1011,7 @@ function addWatcherRow() {
   wirePlayerSelect(sel);
   // Apply current filter immediately so already-used players are hidden
   filterUsedPlayers();
+  populateMvpDropdown();
 }
 
 // ═══════════════════════════════════════════
@@ -1038,8 +1098,9 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
 
   if (!valid) return;
 
-  const coupleIds = activeMode === 'Jupiter' ? [couplePlayer1, couplePlayer2] : null;
-  const game = { id: uid(), date, notes, mode: activeMode, doubleScore, coupleIds, participants };
+  const coupleIds  = activeMode === 'Jupiter' ? [couplePlayer1, couplePlayer2] : null;
+  const mvpPlayerId = document.getElementById('mvp-select').value || null;
+  const game = { id: uid(), date, notes, mode: activeMode, doubleScore, coupleIds, mvpPlayerId, participants };
   const btn  = document.getElementById('save-game-btn');
   btn.disabled    = true;
   btn.textContent = t('savingBtn');
@@ -1078,6 +1139,8 @@ function resetLogForm() {
   document.getElementById('custom-village-roles').innerHTML       = '';
   document.getElementById('custom-wolf-count').value    = 4;
   document.getElementById('custom-village-count').value = 8;
+  document.getElementById('mvp-select').innerHTML = '<option value="">— —</option>';
+  document.getElementById('mvp-select').value     = '';
   activeMode = null; selectedWinner = null; watcherCount = 0;
 }
 
@@ -1222,6 +1285,8 @@ function renderHistory() {
       const pid    = p.playerId || p.player_id;
       const player = getPlayerById(pid);
       const name   = player ? esc(player.name) : '<em>Deleted</em>';
+      const mvpId  = game.mvpPlayerId || game.mvp_player_id;
+      const isMvp  = mvpId && mvpId === pid;
       let badge, pts;
       const mult = (game.double_score || game.doubleScore) ? 2 : 1;
       if (p.status === 'watched') {
@@ -1230,10 +1295,12 @@ function renderHistory() {
       } else if (p.outcome === 'won') {
         badge = `<span class="badge badge-win">${t('badgeWon')}</span>`;
         pts   = `+${SCORE.WIN * mult}`;
+        if (isMvp) pts = `+${(SCORE.WIN + MVP_BONUS) * mult}`;
       } else {
         badge = `<span class="badge badge-loss">${t('badgeLost')}</span>`;
         pts   = `+${SCORE.LOSS * mult}`;
       }
+      if (isMvp) badge += ` <span class="badge badge-mvp">🏆 MVP</span>`;
       const sideLabel = (p.sideId || p.side_id) ? tSide(p.sideId || p.side_id) : '—';
       return `<tr>
         <td>${name}</td>
