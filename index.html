@@ -224,6 +224,10 @@
             <button class="btn btn-primary" id="add-player-btn" data-i18n="addPlayerBtn">添加玩家</button>
           </div>
         </div>
+        <label class="random-checkbox-label">
+          <input type="checkbox" id="new-player-random" />
+          <span data-i18n="randomPlayerLabel">路人（不计入排行榜）</span>
+        </label>
       </div>
       <div id="players-list-container">
         <p class="empty-state" data-i18n="playersEmpty">暂无玩家。</p>
@@ -264,6 +268,19 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="quickadd-confirm" data-i18n="quickAddConfirm">添加并选择</button>
         <button class="btn btn-secondary" id="quickadd-cancel" data-i18n="quickAddCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RENAME PLAYER MODAL -->
+  <div id="rename-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 data-i18n="renamePlayerTitle">重命名玩家</h3>
+      <p data-i18n="renamePlayerDesc">输入新的名称。此更改将应用于所有记录。</p>
+      <input type="text" id="rename-name" style="margin-bottom:1rem" />
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="rename-confirm" data-i18n="renameConfirmBtn">保存</button>
+        <button class="btn btn-secondary" id="rename-cancel" data-i18n="cancelBtn">取消</button>
       </div>
     </div>
   </div>

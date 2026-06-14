@@ -139,6 +139,7 @@ let selectedWinner = null;
 let watcherCount   = 0;
 let couplePlayer1  = null;
 let couplePlayer2  = null;
+let editingGameId  = null; // set when editing an existing game, null when creating new
 
 // ═══════════════════════════════════════════
 //  PERSISTENCE — Supabase + localStorage fallback
@@ -152,9 +153,15 @@ async function loadState() {
         sb.select('participants'),
       ]);
 
-      state.players = players;
+      state.players = players.map(p => ({
+        ...p,
+        isRandom: p.is_random || false,
+      }));
       state.games   = games.map(g => ({
         ...g,
+        coupleIds: (g.couple_player_1 && g.couple_player_2)
+          ? [g.couple_player_1, g.couple_player_2]
+          : null,
         participants: participants.filter(p => p.game_id === g.id).map(p => ({
           ...p,
           playerId:   p.player_id,
@@ -186,16 +193,18 @@ async function saveGame(game) {
   if (isSupabaseConfigured()) {
     try {
       const [inserted] = await sb.insert('games', {
-        id:           game.id,
-        date:         game.date,
-        notes:        game.notes       || null,
-        mode:         game.mode        || null,
-        double_score: game.doubleScore || false,
-        mvp_player_id: game.mvpPlayerId || null,
+        id:            game.id,
+        date:          game.date,
+        notes:         game.notes       || null,
+        mode:          game.mode        || null,
+        double_score:  game.doubleScore || false,
+        mvp_player_id:   game.mvpPlayerId || null,
+        winning_side:    game.winningSide || null,
+        couple_player_1: (game.coupleIds && game.coupleIds[0]) || null,
+        couple_player_2: (game.coupleIds && game.coupleIds[1]) || null,
       });
       const gameId = inserted.id;
 
-      // ── FIXED: include adjustment in every participant row ──
       const rows = game.participants.map(p => ({
         game_id:    gameId,
         player_id:  p.playerId,
@@ -218,10 +227,56 @@ async function saveGame(game) {
   return game.id;
 }
 
+/** Update an existing game in place: update the games row, then replace all participants */
+async function updateGame(game) {
+  if (isSupabaseConfigured()) {
+    try {
+      await sb.update('games', { id: game.id }, {
+        date:          game.date,
+        notes:         game.notes       || null,
+        mode:          game.mode        || null,
+        double_score:  game.doubleScore || false,
+        mvp_player_id:   game.mvpPlayerId || null,
+        winning_side:    game.winningSide || null,
+        couple_player_1: (game.coupleIds && game.coupleIds[0]) || null,
+        couple_player_2: (game.coupleIds && game.coupleIds[1]) || null,
+      });
+
+      // Remove old participants then insert the new set
+      await sb.delete('participants', { game_id: game.id });
+
+      const rows = game.participants.map(p => ({
+        game_id:    game.id,
+        player_id:  p.playerId,
+        status:     p.status,
+        role:       p.role       || null,
+        side_id:    p.sideId     || null,
+        outcome:    p.outcome    || null,
+        adjustment: p.adjustment || null,
+      }));
+      await sb.insert('participants', rows);
+
+      return game.id;
+    } catch (err) {
+      console.error('Supabase update error:', err);
+      toast(t('toastCloudFail'));
+    }
+  }
+  // Local fallback
+  const idx = state.games.findIndex(g => g.id === game.id);
+  if (idx !== -1) state.games[idx] = game;
+  localStorage.setItem('mafiaStats', JSON.stringify(state));
+  return game.id;
+}
+
 async function savePlayer(player) {
   if (isSupabaseConfigured()) {
     try {
-      const [inserted] = await sb.insert('players', { id: player.id, name: player.name });
+      const [inserted] = await sb.insert('players', {
+        id:        player.id,
+        name:      player.name,
+        is_random: player.isRandom || false,
+      });
       return inserted;
     } catch (err) {
       console.error('Supabase save error:', err);
@@ -231,6 +286,23 @@ async function savePlayer(player) {
   state.players.push(player);
   localStorage.setItem('mafiaStats', JSON.stringify(state));
   return player;
+}
+
+/** Update an existing player's name and/or random flag */
+async function updatePlayer(id, fields) {
+  if (isSupabaseConfigured()) {
+    try {
+      const payload = {};
+      if (fields.name      !== undefined) payload.name      = fields.name;
+      if (fields.isRandom  !== undefined) payload.is_random = fields.isRandom;
+      await sb.update('players', { id }, payload);
+      return;
+    } catch (err) {
+      console.error('Supabase update error:', err);
+      toast(t('toastCloudFail'));
+    }
+  }
+  localStorage.setItem('mafiaStats', JSON.stringify(state));
 }
 
 async function deleteGameRemote(gameId) {
@@ -322,6 +394,7 @@ function computePlayerStats(playerId) {
 
 function getLeaderboard() {
   return state.players
+    .filter(p => !p.isRandom)
     .map(p => ({ player: p, stats: computePlayerStats(p.id) }))
     .sort((a, b) => b.stats.score - a.stats.score);
 }
@@ -436,11 +509,15 @@ document.getElementById('add-player-btn').addEventListener('click', async () => 
   if (state.players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
     toast(t('toastNameExists')); return;
   }
-  const player = { id: uid(), name };
+  const isRandom = document.getElementById('new-player-random').checked;
+  const player = { id: uid(), name, isRandom };
   const saved  = await savePlayer(player);
-  if (!state.players.find(p => p.id === saved.id)) state.players.push(saved);
+  const savedWithFlag = { ...saved, isRandom };
+  if (!state.players.find(p => p.id === saved.id)) state.players.push(savedWithFlag);
   input.value = '';
+  document.getElementById('new-player-random').checked = false;
   renderPlayersList();
+  renderLeaderboard();
   toast(t('toastPlayerAdded', name));
 });
 document.getElementById('new-player-name').addEventListener('keydown', e => {
@@ -459,13 +536,72 @@ function renderPlayersList() {
       const s = computePlayerStats(p.id);
       return `<div class="player-card">
         <div>
-          <div class="player-card-name">${esc(p.name)}</div>
+          <div class="player-card-name">
+            ${esc(p.name)}
+            ${p.isRandom ? `<span class="badge badge-random">${t('randomBadge')}</span>` : ''}
+          </div>
           <div class="player-card-stats">${t('playerCardStats', s.totalGames, s.score, s.winRate)}</div>
         </div>
-        <button class="btn-icon admin-action" title="Remove player" onclick="removePlayer('${p.id}')" style="display:${isAdmin?'':'none'}">🗑</button>
+        <div class="player-card-actions admin-action" style="display:${isAdmin?'flex':'none'}">
+          <button class="btn-icon" title="${t('renamePlayerTitle')}" onclick="openRenamePlayer('${p.id}')">✏️</button>
+          <button class="btn-icon" title="${t('toggleRandomTitle')}" onclick="toggleRandomPlayer('${p.id}')">${p.isRandom ? '👤' : '🎭'}</button>
+          <button class="btn-icon" title="Remove player" onclick="removePlayer('${p.id}')">🗑</button>
+        </div>
       </div>`;
     }).join('')
   }</div>`;
+}
+
+// ─── Rename player ────────────────────────────────────────────────────────
+let _renamePlayerId = null;
+
+function openRenamePlayer(id) {
+  if (!isAdmin) return;
+  const player = getPlayerById(id);
+  if (!player) return;
+  _renamePlayerId = id;
+  document.getElementById('rename-name').value = player.name;
+  document.getElementById('rename-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('rename-name').focus(), 50);
+}
+
+document.getElementById('rename-confirm').addEventListener('click', async () => {
+  const newName = document.getElementById('rename-name').value.trim();
+  if (!newName) { toast(t('toastEnterName')); return; }
+  if (state.players.some(p => p.id !== _renamePlayerId && p.name.toLowerCase() === newName.toLowerCase())) {
+    toast(t('toastNameExists')); return;
+  }
+  const player = getPlayerById(_renamePlayerId);
+  if (player) {
+    await updatePlayer(_renamePlayerId, { name: newName });
+    player.name = newName;
+  }
+  document.getElementById('rename-overlay').classList.add('hidden');
+  renderPlayersList();
+  renderLeaderboard();
+  renderHistory();
+  toast(t('toastPlayerRenamed'));
+});
+
+document.getElementById('rename-cancel').addEventListener('click', () => {
+  document.getElementById('rename-overlay').classList.add('hidden');
+});
+
+document.getElementById('rename-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('rename-confirm').click();
+});
+
+// ─── Toggle random/路人 status ─────────────────────────────────────────────
+async function toggleRandomPlayer(id) {
+  if (!isAdmin) return;
+  const player = getPlayerById(id);
+  if (!player) return;
+  const newVal = !player.isRandom;
+  await updatePlayer(id, { isRandom: newVal });
+  player.isRandom = newVal;
+  renderPlayersList();
+  renderLeaderboard();
+  toast(newVal ? t('toastMarkedRandom', player.name) : t('toastUnmarkedRandom', player.name));
 }
 
 async function removePlayer(id) {
@@ -526,6 +662,8 @@ function activateMode(modeKey) {
 }
 
 document.getElementById('back-to-mode-btn').addEventListener('click', () => {
+  editingGameId = null;
+  document.getElementById('save-game-btn').textContent = t('saveGameBtn');
   document.getElementById('log-step-assign').style.display  = 'none';
   document.getElementById('log-step-mode').style.display    = 'block';
   document.getElementById('sides-container').innerHTML       = '';
@@ -1098,29 +1236,43 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
 
   if (!valid) return;
 
-  const coupleIds  = activeMode === 'Jupiter' ? [couplePlayer1, couplePlayer2] : null;
+  const coupleIds   = activeMode === 'Jupiter' ? [couplePlayer1, couplePlayer2] : null;
   const mvpPlayerId = document.getElementById('mvp-select').value || null;
-  const game = { id: uid(), date, notes, mode: activeMode, doubleScore, coupleIds, mvpPlayerId, participants };
+  const game = {
+    id: editingGameId || uid(),
+    date, notes, mode: activeMode, doubleScore, coupleIds, mvpPlayerId,
+    winningSide: selectedWinner,
+    participants,
+  };
   const btn  = document.getElementById('save-game-btn');
   btn.disabled    = true;
   btn.textContent = t('savingBtn');
 
   try {
-    await saveGame(game);
-    if (!state.games.find(g => g.id === game.id)) state.games.unshift(game);
-    toast(t('toastGameSaved'));
+    if (editingGameId) {
+      await updateGame(game);
+      const idx = state.games.findIndex(g => g.id === game.id);
+      if (idx !== -1) state.games[idx] = game;
+      toast(t('toastGameUpdated'));
+    } else {
+      await saveGame(game);
+      if (!state.games.find(g => g.id === game.id)) state.games.unshift(game);
+      toast(t('toastGameSaved'));
+    }
     resetLogForm();
     renderLeaderboard();
+    renderHistory();
   } catch (err) {
     toast(t('toastGameSaveErr'));
     console.error(err);
   } finally {
     btn.disabled    = false;
-    btn.textContent = t('saveGameBtn');
+    btn.textContent = editingGameId ? t('updateGameBtn') : t('saveGameBtn');
   }
 });
 
 function resetLogForm() {
+  editingGameId = null;
   document.getElementById('game-date').value             = todayISO();
   document.getElementById('game-notes').value            = '';
   document.getElementById('double-score-toggle').checked = false;
@@ -1329,6 +1481,7 @@ function renderHistory() {
             <tbody>${rows}</tbody>
           </table>
           <div class="history-actions" style="display:${isAdmin?'flex':'none'}">
+            <button class="btn btn-secondary" onclick="editGame('${game.id}')">${t('editGameBtn')}</button>
             <button class="btn btn-danger" onclick="deleteGame('${game.id}')">${t('deleteGameBtn')}</button>
           </div>
         </div>
@@ -1339,6 +1492,101 @@ function renderHistory() {
 function toggleHistory(gameId) {
   const body = document.getElementById(`body-${gameId}`);
   if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+/**
+ * Load an existing game back into the Log Game form for editing.
+ * On save, the original game record will be updated rather than a new one created.
+ */
+function editGame(gameId) {
+  if (!isAdmin) return;
+  const game = state.games.find(g => g.id === gameId);
+  if (!game || game.mode === 'blackbox') return;
+
+  // Switch to the Log Game tab
+  document.querySelector('[data-tab="log-game"]').click();
+
+  // Basic fields
+  document.getElementById('game-date').value             = game.date;
+  document.getElementById('game-notes').value            = game.notes || '';
+  document.getElementById('double-score-toggle').checked = !!(game.double_score || game.doubleScore);
+
+  const played   = game.participants.filter(p => p.status === 'played');
+  const watched  = game.participants.filter(p => p.status === 'watched');
+
+  // For Custom mode, pre-set the wolf/village counts based on saved participant sides
+  if (game.mode === 'Custom') {
+    const wolfCount    = played.filter(p => (p.sideId || p.side_id) === 'wolf').length || 1;
+    const villageCount = played.filter(p => (p.sideId || p.side_id) === 'village').length || 1;
+    document.getElementById('custom-wolf-count').value    = wolfCount;
+    document.getElementById('custom-village-count').value = villageCount;
+  }
+
+  // Build the mode UI (this also resets selectedWinner, couple, mvp, watchers)
+  activateMode(game.mode);
+
+  // ── Fill in role assignments (order matches build order) ──
+  const isCustom = game.mode === 'Custom';
+  const roleRows = isCustom
+    ? document.querySelectorAll('#custom-roles-section .custom-role-row')
+    : document.querySelectorAll('#sides-container .role-row');
+
+  roleRows.forEach((row, i) => {
+    const p = played[i];
+    if (!p) return;
+    const pid = p.playerId || p.player_id;
+
+    if (isCustom) {
+      const roleInput = row.querySelector('.custom-role-input');
+      if (roleInput && p.role) roleInput.value = p.role;
+    }
+    const sel = row.querySelector('.player-select');
+    if (sel && pid) sel.value = pid;
+  });
+
+  // ── Jupiter couple ──
+  if (game.mode === 'Jupiter' && game.coupleIds) {
+    couplePlayer1 = game.coupleIds[0] || null;
+    couplePlayer2 = game.coupleIds[1] || null;
+    populateCoupleDropdowns();
+    const sel1 = document.getElementById('couple-player-1');
+    const sel2 = document.getElementById('couple-player-2');
+    if (sel1 && couplePlayer1) sel1.value = couplePlayer1;
+    if (sel2 && couplePlayer2) sel2.value = couplePlayer2;
+    updateCoupleIndicator();
+  }
+
+  // ── Winner selection (after couple indicator so the couple button is visible if needed) ──
+  const winningSide = game.winningSide || game.winning_side;
+  if (winningSide) {
+    const winBtn = document.querySelector(`#winner-side-container .winner-btn[data-side="${winningSide}"]`);
+    if (winBtn) selectWinner(winningSide, winBtn);
+  }
+
+  // ── Watchers ──
+  watched.forEach(p => {
+    addWatcherRow();
+    const rows = document.querySelectorAll('#watcher-list .watcher-row');
+    const lastRow = rows[rows.length - 1];
+    const sel = lastRow?.querySelector('.player-select');
+    const pid = p.playerId || p.player_id;
+    if (sel && pid) sel.value = pid;
+  });
+
+  // ── Refresh dependent UI now that all selections are set ──
+  filterUsedPlayers();
+  populateMvpDropdown();
+
+  // ── MVP ──
+  const mvpId = game.mvpPlayerId || game.mvp_player_id;
+  const mvpSel = document.getElementById('mvp-select');
+  if (mvpSel && mvpId) mvpSel.value = mvpId;
+
+  // ── Switch into "edit" mode ──
+  editingGameId = game.id;
+  document.getElementById('save-game-btn').textContent = t('updateGameBtn');
+
+  toast(t('toastEditingGame'));
 }
 
 async function deleteGame(gameId) {

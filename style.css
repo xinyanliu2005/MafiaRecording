@@ -614,6 +614,7 @@ select option {
 .history-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.6rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--border);
@@ -1436,4 +1437,40 @@ select option {
   color: var(--gold);
   border: 1px solid var(--gold-dim);
   font-weight: 700;
+}
+
+/* ═══════════════════════════════════════════
+   PLAYER MANAGEMENT — RENAME / RANDOM
+═══════════════════════════════════════════ */
+.random-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0.03em;
+}
+
+.random-checkbox-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+
+.badge-random {
+  background: rgba(122,90,26,0.18);
+  color: #d4a86c;
+  border: 1px solid rgba(212,168,108,0.35);
+  margin-left: 0.5rem;
+  font-size: 0.6rem;
+  vertical-align: middle;
+}
+
+.player-card-actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
 }
