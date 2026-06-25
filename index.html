@@ -64,17 +64,19 @@
           </div>
 
           <div class="double-score-row">
-            <label class="double-score-label" for="double-score-toggle">
+            <label class="double-score-label">
               <span class="double-icon">⚡</span>
               <span>
-                <span data-i18n="labelDoubleScore">双倍积分</span>
-                <span class="double-score-sub" data-i18n="doubleScoreDesc">本局所有积分 ×2</span>
+                <span data-i18n="labelScoreMultiplier">积分倍数</span>
+                <span class="double-score-sub" data-i18n="scoreMultiplierDesc">为本局所有积分设置倍数</span>
               </span>
             </label>
-            <div class="toggle-wrap">
-              <input type="checkbox" id="double-score-toggle" class="toggle-input" />
-              <span class="toggle-slider"></span>
-            </div>
+            <select id="score-multiplier" class="multiplier-select">
+              <option value="1" data-i18n="mult1x">×1 标准</option>
+              <option value="2" data-i18n="mult2x">×2 双倍</option>
+              <option value="3" data-i18n="mult3x">×3 三倍</option>
+              <option value="10" data-i18n="mult10x">×10 十倍</option>
+            </select>
           </div>
 
           <hr class="divider" />

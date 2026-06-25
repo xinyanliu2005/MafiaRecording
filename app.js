@@ -159,12 +159,14 @@ async function loadState() {
       }));
       state.games   = games.map(g => ({
         ...g,
+        scoreMultiplier: g.score_multiplier || (g.double_score ? 2 : 1),
         coupleIds: (g.couple_player_1 && g.couple_player_2)
           ? [g.couple_player_1, g.couple_player_2]
           : null,
         participants: participants.filter(p => p.game_id === g.id).map(p => ({
           ...p,
           playerId:   p.player_id,
+          playerName: p.player_name || null,
           sideId:     p.side_id,
           adjustment: p.adjustment || 0,
         })),
@@ -197,7 +199,7 @@ async function saveGame(game) {
         date:          game.date,
         notes:         game.notes       || null,
         mode:          game.mode        || null,
-        double_score:  game.doubleScore || false,
+        score_multiplier: game.scoreMultiplier || 1,
         mvp_player_id:   game.mvpPlayerId || null,
         winning_side:    game.winningSide || null,
         couple_player_1: (game.coupleIds && game.coupleIds[0]) || null,
@@ -205,15 +207,19 @@ async function saveGame(game) {
       });
       const gameId = inserted.id;
 
-      const rows = game.participants.map(p => ({
-        game_id:    gameId,
-        player_id:  p.playerId,
-        status:     p.status,
-        role:       p.role       || null,
-        side_id:    p.sideId     || null,
-        outcome:    p.outcome    || null,
-        adjustment: p.adjustment || null,
-      }));
+      const rows = game.participants.map(p => {
+        const player = getPlayerById(p.playerId);
+        return {
+          game_id:     gameId,
+          player_id:   p.playerId,
+          player_name: player ? player.name : (p.playerName || null),
+          status:      p.status,
+          role:        p.role       || null,
+          side_id:     p.sideId     || null,
+          outcome:     p.outcome    || null,
+          adjustment:  p.adjustment || null,
+        };
+      });
       await sb.insert('participants', rows);
 
       return gameId;
@@ -235,7 +241,7 @@ async function updateGame(game) {
         date:          game.date,
         notes:         game.notes       || null,
         mode:          game.mode        || null,
-        double_score:  game.doubleScore || false,
+        score_multiplier: game.scoreMultiplier || 1,
         mvp_player_id:   game.mvpPlayerId || null,
         winning_side:    game.winningSide || null,
         couple_player_1: (game.coupleIds && game.coupleIds[0]) || null,
@@ -245,15 +251,19 @@ async function updateGame(game) {
       // Remove old participants then insert the new set
       await sb.delete('participants', { game_id: game.id });
 
-      const rows = game.participants.map(p => ({
-        game_id:    game.id,
-        player_id:  p.playerId,
-        status:     p.status,
-        role:       p.role       || null,
-        side_id:    p.sideId     || null,
-        outcome:    p.outcome    || null,
-        adjustment: p.adjustment || null,
-      }));
+      const rows = game.participants.map(p => {
+        const player = getPlayerById(p.playerId);
+        return {
+          game_id:     game.id,
+          player_id:   p.playerId,
+          player_name: player ? player.name : (p.playerName || null),
+          status:      p.status,
+          role:        p.role       || null,
+          side_id:     p.sideId     || null,
+          outcome:     p.outcome    || null,
+          adjustment:  p.adjustment || null,
+        };
+      });
       await sb.insert('participants', rows);
 
       return game.id;
@@ -372,7 +382,7 @@ function computePlayerStats(playerId) {
       score += (p.adjustment || p.delta || 0);
       continue;
     }
-    const mult = (game.double_score || game.doubleScore) ? 2 : 1;
+    const mult = game.scoreMultiplier || game.score_multiplier || (game.double_score || game.doubleScore ? 2 : 1);
     if (p.status === 'watched') {
       score += SCORE.WATCH * mult; watched++;
     } else if (p.status === 'played') {
@@ -1158,7 +1168,7 @@ function addWatcherRow() {
 document.getElementById('save-game-btn').addEventListener('click', async () => {
   const date        = document.getElementById('game-date').value;
   const notes       = document.getElementById('game-notes').value.trim();
-  const doubleScore = document.getElementById('double-score-toggle').checked;
+  const scoreMultiplier = parseInt(document.getElementById('score-multiplier').value, 10) || 1;
   if (!date)       { toast(t('toastSelectDate')); return; }
   if (!activeMode) { toast(t('toastSelectMode')); return; }
 
@@ -1240,7 +1250,7 @@ document.getElementById('save-game-btn').addEventListener('click', async () => {
   const mvpPlayerId = document.getElementById('mvp-select').value || null;
   const game = {
     id: editingGameId || uid(),
-    date, notes, mode: activeMode, doubleScore, coupleIds, mvpPlayerId,
+    date, notes, mode: activeMode, scoreMultiplier, coupleIds, mvpPlayerId,
     winningSide: selectedWinner,
     participants,
   };
@@ -1275,7 +1285,7 @@ function resetLogForm() {
   editingGameId = null;
   document.getElementById('game-date').value             = todayISO();
   document.getElementById('game-notes').value            = '';
-  document.getElementById('double-score-toggle').checked = false;
+  document.getElementById('score-multiplier').value = '1';
   couplePlayer1 = null;
   couplePlayer2 = null;
   document.getElementById('jupiter-couple-section').style.display = 'none';
@@ -1392,7 +1402,7 @@ document.getElementById('bb-confirm-btn').addEventListener('click', async () => 
     date:         todayISO(),
     notes:        reason || null,
     mode:         'blackbox',
-    doubleScore:  false,
+    scoreMultiplier: 1,
     coupleIds:    null,
     participants: [{ playerId, status: 'blackbox', adjustment: delta, role: null, sideId: null, outcome: null }],
   };
@@ -1436,11 +1446,12 @@ function renderHistory() {
     const rows = game.participants.map(p => {
       const pid    = p.playerId || p.player_id;
       const player = getPlayerById(pid);
-      const name   = player ? esc(player.name) : '<em>Deleted</em>';
+      const fallbackName = p.playerName || p.player_name;
+      const name   = player ? esc(player.name) : (fallbackName ? `<span style="color:var(--text-muted)">${esc(fallbackName)}</span>` : '<em>Deleted</em>');
       const mvpId  = game.mvpPlayerId || game.mvp_player_id;
       const isMvp  = mvpId && mvpId === pid;
       let badge, pts;
-      const mult = (game.double_score || game.doubleScore) ? 2 : 1;
+      const mult = game.scoreMultiplier || game.score_multiplier || (game.double_score || game.doubleScore ? 2 : 1);
       if (p.status === 'watched') {
         badge = `<span class="badge badge-watch">${t('badgeWatch')}</span>`;
         pts   = `+${SCORE.WATCH * mult}`;
@@ -1469,7 +1480,7 @@ function renderHistory() {
           <div class="history-game-title">
             <span class="history-date">${formatDate(game.date)}</span>
             ${modeLabel ? `<span class="badge badge-mode">${esc(modeLabel)}</span>` : ''}
-            ${(game.double_score || game.doubleScore) ? `<span class="badge badge-double">${t('badgeDouble')}</span>` : ''}
+            ${((game.scoreMultiplier || game.score_multiplier || (game.double_score ? 2 : 1)) > 1) ? `<span class="badge badge-double">×${game.scoreMultiplier || game.score_multiplier || 2}</span>` : ''}
             ${game.coupleIds ? `<span class="badge badge-couple">💕</span>` : ''}
             ${game.notes ? `<span class="history-notes">${esc(game.notes)}</span>` : ''}
           </div>
@@ -1509,7 +1520,8 @@ function editGame(gameId) {
   // Basic fields
   document.getElementById('game-date').value             = game.date;
   document.getElementById('game-notes').value            = game.notes || '';
-  document.getElementById('double-score-toggle').checked = !!(game.double_score || game.doubleScore);
+  const savedMult = game.scoreMultiplier || game.score_multiplier || (game.double_score ? 2 : 1);
+  document.getElementById('score-multiplier').value = String(savedMult);
 
   const played   = game.participants.filter(p => p.status === 'played');
   const watched  = game.participants.filter(p => p.status === 'watched');
